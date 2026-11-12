@@ -1,9 +1,11 @@
+// Member 3 (Monami) — volunteer pickups and receiver requests
 import { Donation, FoodRequest, User } from '../data/types';
 import { getItems, setItems, wait, newId } from './storage';
 import { getDonations, getDonation, updateDonation } from './donationService';
 import { addLog, addNotification } from './adminService';
 import { today } from '../utils/format';
 
+// ---------- Volunteer ----------
 
 export async function getNearbyDonations(radiusKm: number): Promise<Donation[]> {
   await wait();
@@ -13,6 +15,7 @@ export async function getNearbyDonations(radiusKm: number): Promise<Donation[]> 
     .sort((a, b) => a.distanceKm - b.distanceKm);
 }
 
+// The first volunteer to accept locks the pickup
 export async function acceptDonation(id: string, volunteer: User): Promise<Donation> {
   await wait();
   const d = await getDonation(id);
@@ -56,6 +59,7 @@ export async function releasePickup(id: string, volunteer: User): Promise<Donati
   return next.find((x) => x.id === id)!;
 }
 
+// ---------- Receiver ----------
 
 export async function getBrowseList(): Promise<Donation[]> {
   await wait();
@@ -84,6 +88,7 @@ export async function requestDonation(id: string, receiver: User): Promise<FoodR
   return req;
 }
 
+// Donations on their way to this receiver
 export async function getIncoming(receiverId: string): Promise<Donation[]> {
   await wait();
   const list = await getDonations();
