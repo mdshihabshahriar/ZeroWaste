@@ -1,4 +1,3 @@
-// Member 2 (Shihab) — donor posts, status and history
 import { Donation, DonationStatus, FoodType, User } from '../data/types';
 import { getItems, setItems, wait, newId } from './storage';
 import { addLog, addNotification } from './adminService';
@@ -16,7 +15,6 @@ export async function getDonation(id: string): Promise<Donation> {
   return d;
 }
 
-// Shared helper: change fields of one donation (and record a status step)
 export async function updateDonation(id: string, patch: Partial<Donation>, newStatus?: DonationStatus): Promise<Donation> {
   const list = await getDonations();
   let updated: Donation | null = null;
@@ -71,7 +69,7 @@ export async function createDonation(input: NewDonation, donor: User): Promise<D
     donorName: donor.name,
     address: input.address || donor.area,
     area: donor.area.split(',')[0],
-    distanceKm: Math.round((0.8 + Math.random() * 4) * 10) / 10, // dummy distance
+    distanceKm: Math.round((0.8 + Math.random() * 4) * 10) / 10, 
     cookedAt: input.cookedAt,
     postedAt: now,
     collectBy: addHours(input.collectWithinHours),
