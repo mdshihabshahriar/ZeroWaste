@@ -1,4 +1,4 @@
-import { FoodRequest } from './types';
+import { FoodRequest } from './types.js';
 
 export const requests: FoodRequest[] = [
   { id: 'r1', donationId: 'FR-2381', receiverId: 'u4', status: 'Requested', date: '2026-11-05' },
