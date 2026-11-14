@@ -1,0 +1,1 @@
+export { default, unstable_settings } from '../../receiver/ReceiverTabs';
