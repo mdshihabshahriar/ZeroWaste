@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,44 +13,27 @@ import { getDonorDonations, donorStats } from '../donorService';
 import { isActive } from '../../common/services/donationStore';
 import { colors, fonts } from '../../common/constants/theme';
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning,';
-  if (h < 18) return 'Good afternoon,';
-  return 'Good evening,';
-}
-
 export default function DonorHome() {
   const { user } = useAuth();
-  const { data, loading, error, reload } = useData(
-    () => (user ? getDonorDonations(user.id) : Promise.resolve([])),
-    [user?.id]
-  );
+  const { data, loading, error, reload } = useData(() => getDonorDonations(user!.id), [user?.id]);
 
-  const active = useMemo(() => data?.filter(isActive) ?? [], [data]);
-  const stats = useMemo(() => donorStats(data ?? []), [data]);
+  const active = data?.filter(isActive) ?? [];
+  const stats = donorStats(data ?? []);
   const openStatus = (id: string) => router.push({ pathname: '/donor/status', params: { id } });
 
   return (
     <Screen tabs onRefresh={reload}>
       <View style={styles.top}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.hello}>{greeting()}</Text>
+          <Text style={styles.hello}>Good evening,</Text>
           <Text style={styles.name} numberOfLines={1}>
             {user?.name}
           </Text>
         </View>
-        <IconButton
-          name="notifications-outline"
-          label="Notifications"
-          badge
-          onPress={() => router.push('/donor/notifications')}
-        />
+        <IconButton name="notifications-outline" label="Notifications" badge onPress={() => router.push('/donor/notifications')} />
       </View>
 
-      {!user?.verified ? (
-        <Banner type="warning" text="Your account is waiting for admin verification. You can post food after approval." />
-      ) : null}
+      {!user?.verified ? <Banner type="warning" text="Your account is waiting for admin verification. You can post food after approval." /> : null}
 
       <Pressable style={styles.hero} onPress={() => router.push('/donor/create-post')} accessibilityRole="button">
         <View style={styles.heroGlow} />
@@ -71,9 +54,9 @@ export default function DonorHome() {
 
       <View style={styles.sectionRow}>
         <Text style={styles.section}>Active donations</Text>
-        <Pressable onPress={() => router.push('/donor/history')} accessibilityRole="button" hitSlop={8}>
-          <Text style={styles.link}>See all</Text>
-        </Pressable>
+        <Text style={styles.link} onPress={() => router.push('/donor/history')}>
+          See all
+        </Text>
       </View>
 
       {loading && !data ? (

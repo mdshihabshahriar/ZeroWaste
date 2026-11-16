@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import Screen from '../../common/components/Screen';
@@ -14,32 +14,22 @@ import { splitDate } from '../../common/utils/format';
 import { colors } from '../../common/constants/theme';
 
 const FILTERS = ['All', 'Delivered', 'Expired', 'Cancelled'] as const;
-type Filter = (typeof FILTERS)[number];
 
 export default function History() {
   const { user } = useAuth();
-  const [filter, setFilter] = useState<Filter>('All');
-  const { data, loading, error, reload } = useData(
-    () => (user ? getDonorDonations(user.id) : Promise.resolve([])),
-    [user?.id]
-  );
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
+  const { data, loading, error, reload } = useData(() => getDonorDonations(user!.id), [user?.id]);
 
-  const { list, mealsDelivered, receivers } = useMemo(() => {
-    const all = data ?? [];
-    const delivered = all.filter((d) => d.status === 'Delivered');
-    return {
-      list: all.filter((d) => filter === 'All' || d.status === filter),
-      mealsDelivered: delivered.reduce((sum, d) => sum + d.portions, 0),
-      receivers: new Set(delivered.map((d) => d.receiverId).filter(Boolean)).size,
-    };
-  }, [data, filter]);
+  const list = (data ?? []).filter((d) => filter === 'All' || d.status === filter);
+  const delivered = (data ?? []).filter((d) => d.status === 'Delivered');
+  const receivers = new Set(delivered.map((d) => d.receiverId)).size;
 
   return (
     <Screen tabs onRefresh={reload}>
       <Header title="History" />
 
       <View style={styles.summary}>
-        <Sum value={mealsDelivered} label="Meals delivered" />
+        <Sum value={delivered.reduce((s, d) => s + d.portions, 0)} label="Meals delivered" />
         <View style={styles.divider} />
         <Sum value={data?.length ?? 0} label="Donations" />
         <View style={styles.divider} />
@@ -62,11 +52,7 @@ export default function History() {
         list.map((d) => {
           const { day, month } = splitDate(d.date);
           return (
-            <Card
-              key={d.id}
-              style={styles.row}
-              onPress={() => router.push({ pathname: '/donor/status', params: { id: d.id } })}
-            >
+            <Card key={d.id} style={styles.row} onPress={() => router.push({ pathname: '/donor/status', params: { id: d.id } })}>
               <View style={styles.date}>
                 <Text style={styles.day}>{day}</Text>
                 <Text style={styles.month}>{month}</Text>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import RoleGuard from '../common/components/RoleGuard';
 import BottomTabBar, { TabItem } from '../common/components/BottomTabBar';
@@ -10,25 +11,22 @@ const TABS: TabItem[] = [
   { name: 'profile', label: 'Profile', icon: 'person-outline' },
 ];
 
-const HIDE_TAB_BAR_ON = ['create-post', 'status'];
-
-export const unstable_settings = { initialRouteName: 'home' };
+export const unstable_settings = { anchor: 'home' };
 
 export default function DonorLayout() {
   return (
     <RoleGuard role="donor">
-      <Tabs
-        backBehavior="history"
-        screenOptions={{ headerShown: false }}
-        tabBar={(props) => <BottomTabBar {...props} items={TABS} hideOn={HIDE_TAB_BAR_ON} />}
-      >
-        <Tabs.Screen name="home" />
-        <Tabs.Screen name="create-post" />
-        <Tabs.Screen name="history" />
-        <Tabs.Screen name="profile" />
-        <Tabs.Screen name="status" />
-        <Tabs.Screen name="notifications" />
-      </Tabs>
+      <View style={{ flex: 1 }}>
+        <Tabs backBehavior="history" screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }} tabBar={() => null}>
+          <Tabs.Screen name="home" />
+          <Tabs.Screen name="create-post" />
+          <Tabs.Screen name="history" />
+          <Tabs.Screen name="profile" />
+          <Tabs.Screen name="status" />
+          <Tabs.Screen name="notifications" />
+        </Tabs>
+        <BottomTabBar base="/donor" items={TABS} hideOn={['create-post', 'status']} />
+      </View>
     </RoleGuard>
   );
 }

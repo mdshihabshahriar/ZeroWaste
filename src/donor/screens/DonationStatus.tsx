@@ -19,10 +19,7 @@ import { initials } from '../../common/utils/format';
 import { colors } from '../../common/constants/theme';
 
 export default function DonationStatus() {
-  const params = useLocalSearchParams<{ id: string | string[]; created?: string }>();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const created = params.created;
-
+  const { id, created } = useLocalSearchParams<{ id: string; created?: string }>();
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
@@ -31,22 +28,18 @@ export default function DonationStatus() {
 
   const { data, loading, error, reload } = useData(async () => {
     const d = await getDonation(id);
-    const [volunteer, receiver] = await Promise.all([
-      d.volunteerId ? getUser(d.volunteerId) : null,
-      d.receiverId ? getUser(d.receiverId) : null,
-    ]);
+    const [volunteer, receiver] = await Promise.all([getUser(d.volunteerId), getUser(d.receiverId)]);
     return { d, volunteer, receiver };
   }, [id]);
 
   const cancel = async () => {
-    if (!user) return;
     setBusy(true);
     try {
-      await cancelDonation(id, user);
+      await cancelDonation(id, user!);
       setMsg({ type: 'success', text: 'Donation cancelled.' });
       reload();
-    } catch (e: unknown) {
-      setMsg({ type: 'error', text: e instanceof Error ? e.message : 'Could not cancel the donation.' });
+    } catch (e: any) {
+      setMsg({ type: 'error', text: e.message });
     } finally {
       setBusy(false);
     }
@@ -79,11 +72,7 @@ export default function DonationStatus() {
 
       <Card style={{ padding: 18 }}>
         <Text style={styles.h2}>Journey</Text>
-        {ended ? (
-          <Banner type="warning" text={`This donation was ${d.status.toLowerCase()}.`} />
-        ) : (
-          <StatusTimeline donation={d} />
-        )}
+        {ended ? <Banner type="warning" text={`This donation was ${d.status.toLowerCase()}.`} /> : <StatusTimeline donation={d} />}
       </Card>
 
       {volunteer ? (
@@ -115,9 +104,7 @@ export default function DonationStatus() {
         </Card>
       ) : null}
 
-      {d.status === 'Posted' ? (
-        <Button title="Cancel donation" variant="dangerOutline" onPress={cancel} loading={busy} />
-      ) : null}
+      {d.status === 'Posted' ? <Button title="Cancel donation" variant="dangerOutline" onPress={cancel} loading={busy} /> : null}
     </Screen>
   );
 }

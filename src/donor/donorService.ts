@@ -7,13 +7,9 @@ import { formatTime, today, addHours } from '../common/utils/format';
 export async function getDonorDonations(donorId: string): Promise<Donation[]> {
   await wait();
   const list = await getDonations();
-  return list
-    .filter((d) => d.donorId === donorId)
-    .sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? 1 : -1;
-      return a.id < b.id ? 1 : -1;
-    });
+  return list.filter((d) => d.donorId === donorId).sort((a, b) => (a.date < b.date ? 1 : -1));
 }
+
 
 export interface NewDonation {
   food: string;
@@ -30,12 +26,9 @@ export async function createDonation(input: NewDonation, donor: User): Promise<D
   await wait();
   if (!donor.verified) throw new Error('Your account is waiting for admin verification.');
   if (!input.food.trim()) throw new Error('Please write what food it is.');
-  if (!Number.isInteger(input.portions) || input.portions < 1) {
-    throw new Error('Portions must be a whole number of at least 1.');
-  }
+  if (input.portions < 1) throw new Error('Portions must be at least 1.');
 
   const now = formatTime();
-  const area = donor.area ?? '';
   const donation: Donation = {
     id: newId('FR'),
     food: input.food.trim(),
@@ -43,8 +36,8 @@ export async function createDonation(input: NewDonation, donor: User): Promise<D
     portions: input.portions,
     donorId: donor.id,
     donorName: donor.name,
-    address: input.address || area,
-    area: area.split(',')[0],
+    address: input.address || donor.area,
+    area: donor.area.split(',')[0],
     distanceKm: Math.round((0.8 + Math.random() * 4) * 10) / 10, // dummy distance
     cookedAt: input.cookedAt,
     postedAt: now,
@@ -69,7 +62,6 @@ export async function createDonation(input: NewDonation, donor: User): Promise<D
 export async function cancelDonation(id: string, donor: User): Promise<Donation> {
   await wait();
   const d = await getDonation(id);
-  if (d.donorId !== donor.id) throw new Error('You can only cancel your own donations.');
   if (d.status !== 'Posted') throw new Error('Only a donation nobody accepted yet can be cancelled.');
   const updated = await updateDonation(id, {}, 'Cancelled');
   await addLog('status', donor.name, `cancelled #${id}`, id);

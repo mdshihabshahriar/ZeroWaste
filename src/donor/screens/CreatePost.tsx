@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
+import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -38,9 +37,7 @@ export default function CreatePost() {
   const pickPhoto = async (camera: boolean) => {
     setError(null);
     try {
-      const perm = camera
-        ? await ImagePicker.requestCameraPermissionsAsync()
-        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         setError('Permission was denied. You can still post without a photo.');
         return;
@@ -48,7 +45,7 @@ export default function CreatePost() {
       const res = camera
         ? await ImagePicker.launchCameraAsync({ quality: 0.6 })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
-      if (!res.canceled && res.assets?.[0]) setPhoto(res.assets[0].uri);
+      if (!res.canceled) setPhoto(res.assets[0].uri);
     } catch {
       setError('Could not open the camera or gallery.');
     }
@@ -60,52 +57,34 @@ export default function CreatePost() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') throw new Error('Location permission was denied.');
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
+      const pos = await Location.getCurrentPositionAsync({});
       const [place] = await Location.reverseGeocodeAsync(pos.coords);
       const text = place
         ? [place.name, place.street, place.district ?? place.city].filter(Boolean).join(', ')
         : `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
       setAddress(text);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Could not get your location.');
+    } catch (e: any) {
+      setError(e.message ?? 'Could not get your location.');
     } finally {
       setLocLoading(false);
     }
   };
 
   const submit = async () => {
-    if (!user) return;
-    if (!food.trim()) {
-      setError('Please enter what food you are donating.');
-      return;
-    }
     setError(null);
     setLoading(true);
     try {
       const d = await createDonation(
-        {
-          food: food.trim(),
-          type,
-          portions,
-          cookedAt: formatTime(),
-          collectWithinHours: hours,
-          address,
-          photo,
-          note: note.trim() || undefined,
-        },
-        user
+        { food, type, portions, cookedAt: formatTime(), collectWithinHours: hours, address, photo, note: note.trim() || undefined },
+        user!
       );
-
+      // reset form for next time
       setFood('');
       setPhoto(null);
       setNote('');
-      setPortions(10);
-      setHours(3);
       router.push({ pathname: '/donor/status', params: { id: d.id, created: '1' } });
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
@@ -123,13 +102,8 @@ export default function CreatePost() {
       <View style={styles.photoRow}>
         {photo ? (
           <View>
-            <Image source={{ uri: photo }} style={styles.photo} contentFit="cover" />
-            <Pressable
-              style={styles.remove}
-              onPress={() => setPhoto(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Remove photo"
-            >
+            <Image source={{ uri: photo }} style={styles.photo} />
+            <Pressable style={styles.remove} onPress={() => setPhoto(null)} accessibilityLabel="Remove photo">
               <Ionicons name="close" size={14} color={colors.white} />
             </Pressable>
           </View>
