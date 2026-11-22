@@ -1,4 +1,4 @@
-// Volunteer — nearby food and pickups (Member 3, Monami)
+// Volunteer — nearby food and pickups (Member 1, Mahir)
 import { Donation, User } from '../common/data/types';
 import { setItems, wait } from '../common/services/storage';
 import { getDonations, getDonation, updateDonation } from '../common/services/donationStore';
