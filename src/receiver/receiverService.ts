@@ -31,6 +31,7 @@ export async function requestDonation(id: string, receiver: User): Promise<FoodR
   return req;
 }
 
+// Donations on their way to this receiver
 export async function getIncoming(receiverId: string): Promise<Donation[]> {
   await wait();
   const list = await getDonations();
