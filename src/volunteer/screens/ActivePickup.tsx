@@ -1,4 +1,4 @@
-// Active pickup — Member 3 (Monami)
+// Active pickup — Member 1 (Mahir)
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';

@@ -1,4 +1,4 @@
-// Donation detail & accept — Member 3 (Monami)
+// Donation detail & accept — Member 1 (Mahir)
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
