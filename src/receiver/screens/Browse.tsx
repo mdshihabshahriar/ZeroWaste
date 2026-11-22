@@ -1,4 +1,3 @@
-// Receiver: browse & request food — Member 3 (Monami)
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';

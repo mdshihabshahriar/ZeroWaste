@@ -1,149 +1,107 @@
-// Receiver: incoming food & confirm receipt — Member 3 (Monami)
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../common/components/Screen';
-import Header from '../../common/components/Header';
-import Card from '../../common/components/Card';
-import Button from '../../common/components/Button';
-import Input from '../../common/components/Input';
-import Stepper from '../../common/components/Stepper';
-import Chip from '../../common/components/Chip';
 import DonationCard from '../../common/components/DonationCard';
+import Button from '../../common/components/Button';
+import Chip, { ChipRow } from '../../common/components/Chip';
+import { Tag } from '../../common/components/StatusBadge';
 import { Loading, ErrorView, EmptyView, Banner } from '../../common/components/StateViews';
 import { useAuth } from '../../common/context/AuthContext';
 import { useData } from '../../common/hooks/useData';
-import { getIncoming, confirmReceipt } from '../receiverService';
-import { Donation } from '../../common/data/types';
-import { colors } from '../../common/constants/theme';
+import { getBrowseList, requestDonation } from '../receiverService';
+import { colors, fonts } from '../../common/constants/theme';
 
-const CONDITIONS = ['Good', 'Okay', 'Spoiled'] as const;
+const FILTERS = ['All', 'Veg', 'Non-veg', '20+ portions'] as const;
 
-export default function Confirm() {
+export default function Browse() {
   const { user } = useAuth();
-  const { data, loading, error, reload } = useData(() => getIncoming(user!.id), [user?.id]);
-  const [selected, setSelected] = useState<Donation | null>(null);
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
+  const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { data, loading, error, reload } = useData(getBrowseList, []);
+
+  const list = (data ?? []).filter((d) => {
+    if (q && !d.food.toLowerCase().includes(q.toLowerCase())) return false;
+    if (filter === 'Veg' || filter === 'Non-veg') return d.type === filter;
+    if (filter === '20+ portions') return d.portions >= 20;
+    return true;
+  });
+
+  const request = async (id: string) => {
+    setBusyId(id);
+    setMsg(null);
+    try {
+      await requestDonation(id, user!);
+      setMsg({ type: 'success', text: 'Requested! You will be notified when a volunteer is on the way.' });
+      reload();
+    } catch (e: any) {
+      setMsg({ type: 'error', text: e.message });
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <Screen tabs onRefresh={reload}>
-      <Header title={selected ? 'Confirm delivery' : 'My requests'} />
+      <View>
+        <Text style={styles.small}>
+          {user?.name} · {user?.orgType ?? 'Receiver'}
+        </Text>
+        <Text style={styles.h1}>Available food</Text>
+      </View>
+
+      {!user?.verified ? <Banner type="warning" text="Your account is waiting for admin verification. You can request food after approval." /> : null}
       {msg ? <Banner type={msg.type} text={msg.text} /> : null}
 
-      {selected ? (
-        <ConfirmForm
-          donation={selected}
-          onCancel={() => setSelected(null)}
-          onDone={(text) => {
-            setSelected(null);
-            setMsg({ type: 'success', text });
-            reload();
-          }}
-          onError={(text) => setMsg({ type: 'error', text })}
-          user={user!}
-        />
-      ) : loading && !data ? (
+      <View style={styles.search}>
+        <Ionicons name="search" size={20} color={colors.muted} />
+        <TextInput value={q} onChangeText={setQ} placeholder="Search rice, biryani, sweets…" placeholderTextColor="#8C958F" style={styles.input} accessibilityLabel="Search food" />
+      </View>
+
+      <ChipRow>
+        {FILTERS.map((f) => (
+          <Chip key={f} label={f} selected={filter === f} onPress={() => setFilter(f)} />
+        ))}
+      </ChipRow>
+
+      {loading && !data ? (
         <Loading />
       ) : error ? (
         <ErrorView message={error} onRetry={reload} />
-      ) : !data?.length ? (
-        <EmptyView title="Nothing on the way" subtitle="Request food from the Browse tab." icon="receipt-outline" />
+      ) : list.length === 0 ? (
+        <EmptyView title="No food found" subtitle="Try another search or filter." icon="search-outline" />
       ) : (
-        data.map((d) => (
-          <View key={d.id} style={{ gap: 8 }}>
-            <DonationCard donation={d} subtitle={`${d.portions} portions · ${d.donorName}`} />
-            {d.status === 'Picked up' ? (
-              <Button title="Volunteer arrived — confirm" icon="checkmark-circle-outline" onPress={() => { setMsg(null); setSelected(d); }} />
-            ) : (
-              <Text style={styles.wait}>Waiting for the volunteer to pick up the food.</Text>
-            )}
-          </View>
-        ))
+        list.map((d) => {
+          const mine = d.receiverId === user?.id;
+          const taken = !!d.receiverId && !mine;
+          return (
+            <DonationCard
+              key={d.id}
+              donation={d}
+              subtitle={`${d.portions} portions · ${d.distanceKm} km`}
+              footer={mine ? (d.status === 'Picked up' ? 'Volunteer on the way' : 'Requested · waiting for pickup') : `Expires ${d.collectBy}`}
+              right={
+                mine ? (
+                  <Tag text="Requested" bg={colors.primarySoft} fg={colors.primaryDark} />
+                ) : taken ? (
+                  <Tag text="Taken" />
+                ) : (
+                  <Button title="Request" small onPress={() => request(d.id)} loading={busyId === d.id} disabled={!user?.verified} />
+                )
+              }
+            />
+          );
+        })
       )}
     </Screen>
   );
 }
 
-function ConfirmForm({ donation, user, onCancel, onDone, onError }: any) {
-  const d: Donation = donation;
-  const [portions, setPortions] = useState(d.portions);
-  const [condition, setCondition] = useState<(typeof CONDITIONS)[number]>('Good');
-  const [vRating, setVRating] = useState(5);
-  const [dRating, setDRating] = useState(5);
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => setPortions(d.portions), [d.id]);
-
-  const submit = async () => {
-    setBusy(true);
-    try {
-      await confirmReceipt(d.id, user, { portionsReceived: portions, condition, volunteerRating: vRating, donorRating: dRating, note });
-      onDone(`Thank you! ${portions} portions of ${d.food.toLowerCase()} marked as received.`);
-    } catch (e: any) {
-      onError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <View style={styles.arrived}>
-        <Ionicons name="bicycle" size={26} color={colors.white} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.arrivedTitle}>Volunteer has arrived</Text>
-          <Text style={styles.arrivedText}>
-            {d.food} · {d.portions} portions from {d.donorName}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.label}>Portions received</Text>
-      <Stepper value={portions} onChange={setPortions} min={0} max={d.portions} suffix={`of ${d.portions}`} />
-
-      <Text style={styles.label}>Food condition</Text>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {CONDITIONS.map((c) => (
-          <Chip key={c} label={c} selected={condition === c} onPress={() => setCondition(c)} style={{ flex: 1 }} />
-        ))}
-      </View>
-
-      <Card style={{ gap: 12 }}>
-        <Stars label="Rate volunteer" value={vRating} onChange={setVRating} />
-        <View style={{ height: 1, backgroundColor: colors.line }} />
-        <Stars label="Rate donor" value={dRating} onChange={setDRating} />
-      </Card>
-
-      <Input label="Note (optional)" value={note} onChangeText={setNote} placeholder="Thank the donor or report an issue" multiline />
-
-      <Button title="Confirm food received" onPress={submit} loading={busy} />
-      <Button title="Back" variant="ghost" onPress={onCancel} />
-    </>
-  );
-}
-
-function Stars({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <View style={styles.stars}>
-      <Text style={styles.starLabel}>{label}</Text>
-      <View style={{ flexDirection: 'row', gap: 2 }}>
-        {[1, 2, 3, 4, 5].map((n) => (
-          <Pressable key={n} onPress={() => onChange(n)} accessibilityLabel={`${n} stars`} hitSlop={4}>
-            <Ionicons name={n <= value ? 'star' : 'star-outline'} size={26} color={n <= value ? colors.gold : '#B8BFB3'} />
-          </Pressable>
-        ))}
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  wait: { fontSize: 13, color: colors.muted, textAlign: 'center' },
-  arrived: { flexDirection: 'row', gap: 14, alignItems: 'center', padding: 16, borderRadius: 20, backgroundColor: colors.primary },
-  arrivedTitle: { fontSize: 16, fontWeight: '800', color: colors.white },
-  arrivedText: { fontSize: 13, color: '#D9EBE0' },
-  label: { fontSize: 14, fontWeight: '700', color: colors.ink, marginBottom: -6 },
-  stars: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  starLabel: { fontSize: 14, fontWeight: '700', color: colors.ink },
+  small: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  h1: { fontFamily: fonts.serif, fontSize: 26, fontWeight: '600', color: colors.ink },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 52, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
+  input: { flex: 1, fontSize: 15, color: colors.ink },
 });
